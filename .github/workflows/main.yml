@@ -41,41 +41,45 @@ jobs:
         run: |
           echo "Searching for Android project..."
 
-          if [ -f "./gradlew" ]; then
+          if [ -f "settings.gradle.kts" ] && [ -d "app" ]; then
             echo "PROJECT_DIR=." >> "$GITHUB_OUTPUT"
-            echo "Found Gradle wrapper in root."
+            echo "Android project found in repository root."
             exit 0
           fi
 
-          if [ -f "./android-project/gradlew" ]; then
+          if [ -f "android-project/settings.gradle.kts" ] && [ -d "android-project/app" ]; then
             echo "PROJECT_DIR=android-project" >> "$GITHUB_OUTPUT"
-            echo "Found Gradle wrapper in android-project."
+            echo "Android project found in android-project."
             exit 0
           fi
 
-          FOUND=$(find . -type f -name "gradlew" -print -quit)
+          FOUND=$(find . -name "settings.gradle.kts" -o -name "settings.gradle" | head -n 1)
 
           if [ -n "$FOUND" ]; then
             DIR=$(dirname "$FOUND")
             echo "PROJECT_DIR=$DIR" >> "$GITHUB_OUTPUT"
-            echo "Found Gradle wrapper in $DIR"
+            echo "Android project found in $DIR"
             exit 0
           fi
 
-          echo "ERROR: No Gradle wrapper found."
+          echo "ERROR: Android Gradle project was not found."
           exit 1
+
+      - name: Create Gradle wrapper
+        working-directory: ${{ steps.project.outputs.PROJECT_DIR }}
+        run: |
+          gradle wrapper --gradle-version 8.13
+          chmod +x gradlew
 
       - name: Check Gradle project
         working-directory: ${{ steps.project.outputs.PROJECT_DIR }}
         run: |
-          chmod +x gradlew
           ./gradlew tasks --all
 
       - name: Build APK
         working-directory: ${{ steps.project.outputs.PROJECT_DIR }}
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Find APK
         run: |

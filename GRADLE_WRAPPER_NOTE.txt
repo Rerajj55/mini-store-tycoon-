@@ -1,0 +1,1 @@
+If Android Studio asks to upgrade/sync Gradle, accept the compatible Gradle version. This project targets AGP 9.2.0 and Gradle 9.4.1/JDK 17.

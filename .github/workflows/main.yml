@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download project
+      - name: Checkout project
         uses: actions/checkout@v4
 
       - name: Set up Java 17
@@ -23,7 +23,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK 36
+      - name: Install Android SDK
         run: |
           yes | sdkmanager --licenses || true
           sdkmanager "platform-tools"
@@ -35,14 +35,47 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Check project files
+      - name: Find Android project
+        id: project
+        shell: bash
         run: |
-          echo "Project files:"
-          find . -maxdepth 3 -type f | sort
+          echo "Searching for Android project..."
+
+          if [ -f "./gradlew" ]; then
+            echo "PROJECT_DIR=." >> "$GITHUB_OUTPUT"
+            echo "Found Gradle wrapper in root."
+            exit 0
+          fi
+
+          if [ -f "./android-project/gradlew" ]; then
+            echo "PROJECT_DIR=android-project" >> "$GITHUB_OUTPUT"
+            echo "Found Gradle wrapper in android-project."
+            exit 0
+          fi
+
+          FOUND=$(find . -type f -name "gradlew" -print -quit)
+
+          if [ -n "$FOUND" ]; then
+            DIR=$(dirname "$FOUND")
+            echo "PROJECT_DIR=$DIR" >> "$GITHUB_OUTPUT"
+            echo "Found Gradle wrapper in $DIR"
+            exit 0
+          fi
+
+          echo "ERROR: No Gradle wrapper found."
+          exit 1
+
+      - name: Check Gradle project
+        working-directory: ${{ steps.project.outputs.PROJECT_DIR }}
+        run: |
+          chmod +x gradlew
+          ./gradlew tasks --all
 
       - name: Build APK
+        working-directory: ${{ steps.project.outputs.PROJECT_DIR }}
         run: |
-          gradle --no-daemon assembleDebug
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
 
       - name: Find APK
         run: |
